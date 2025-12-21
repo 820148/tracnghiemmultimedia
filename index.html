@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tạo Đề Thi (Giao diện chuẩn v17)</title>
+    <title>Tạo Đề Thi (Đa phương tiện v18)</title>
 
     <script>
         window.MathJax = {
@@ -16,8 +16,6 @@
     <style>
         html, body { margin:0; font-family: 'Segoe UI', Arial, sans-serif; background:#f0f2f5; color: #333; }
         #setup, #preExam, #examPage { max-width:900px; margin:auto; padding:20px; box-sizing: border-box; }
-        
-        /* 1. KHẮC PHỤC LỖI CHE KHUẤT: Thêm padding-top cho trang thi */
         #examPage { padding-top: 80px; }
 
         #editor { 
@@ -30,24 +28,15 @@
         img.media-item { max-width: 150px; border: 1px solid #ccc; margin: 5px; vertical-align: middle; }
         video, audio { max-width: 300px; vertical-align: middle; margin: 5px; }
 
-        /* YOUTUBE FACADE */
-        .yt-facade {
-            display: inline-block; width: 300px; height: 170px;
-            background-color: #000; background-position: center; background-size: cover;
-            position: relative; cursor: pointer; border-radius: 8px;
-            margin: 10px 0; border: 2px solid #444;
+        /* CLIP EMBED STYLE */
+        .clip-container { 
+            position: relative; width: 100%; max-width: 560px; margin: 10px 0; 
+            background: #000; border-radius: 8px; overflow: hidden;
         }
-        .yt-facade::after {
-            content: "▶"; position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%); font-size: 50px; color: white;
-            opacity: 0.8; text-shadow: 0 0 10px rgba(0,0,0,0.5); transition: 0.2s;
-        }
-        .yt-facade:hover::after { color: #ff0000; opacity: 1; }
-        .exam-iframe { width: 100%; max-width: 600px; height: 350px; border: none; }
+        .exam-iframe { width: 100%; aspect-ratio: 16/9; border: none; display: block; }
 
         #preExam, #examPage { display:none; }
         
-        /* 2. CĂN GIỮA ĐỒNG HỒ: Sử dụng Flexbox và Absolute */
         .top-bar { 
             position: fixed; top: 0; left: 0; width: 100%; height: 60px;
             background: #fff; z-index: 2000; padding: 0 20px; 
@@ -56,15 +45,8 @@
             box-sizing: border-box; 
         }
         
-        .timer-container {
-            position: absolute; left: 50%; transform: translateX(-50%);
-            text-align: center;
-        }
-        .timer { 
-            background: #d00000; color: #fff; padding: 5px 15px; 
-            font-size: 20px; font-weight: bold; border-radius: 20px; 
-            min-width: 80px; display: inline-block;
-        }
+        .timer-container { position: absolute; left: 50%; transform: translateX(-50%); text-align: center; }
+        .timer { background: #d00000; color: #fff; padding: 5px 15px; font-size: 20px; font-weight: bold; border-radius: 20px; min-width: 80px; display: inline-block; }
         
         #pinnedContainer { position: fixed; top: 65px; left: 50%; transform: translateX(-50%); width: 95%; max-width: 800px; background: #fffde7; border: 2px solid #fbc02d; padding: 10px; z-index: 1500; border-radius: 0 0 10px 10px; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.1); max-height: 150px; overflow-y: auto; }
         
@@ -74,7 +56,6 @@
         .question b { display: block; margin-bottom: 15px; font-size: 18px; color: #0056b3; }
         .question.unanswered { border: 2px solid #ff0000; box-shadow: 0 0 10px rgba(255,0,0,0.2); }
         
-        /* 3. BẢNG KẾT QUẢ */
         #resultBoard {
             display: none; background: #fff; padding: 20px; margin-bottom: 20px;
             border-radius: 10px; border: 3px solid #28a745; text-align: center;
@@ -92,22 +73,22 @@
         .toolbar { margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; background: #e9ecef; padding: 10px; border-radius: 8px; }
         button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 6px; background: #007bff; color: white; font-weight: bold; }
         button:hover { opacity: 0.9; }
-        #btnCheck { background: #17a2b8; color: white; margin-right: 10px; }
-        #btnSubmit { background: #dc3545; color: white; }
+        #btnCheck { background: #17a2b8; }
+        #btnSubmit { background: #dc3545; }
     </style>
 </head>
 <body>
 
 <div id="setup">
-    <h2 style="color:#007bff; text-align: center;">TẠO ĐỀ THI (V17 - FULL TÍNH NĂNG)</h2>
+    <h2 style="color:#007bff; text-align: center;">TẠO ĐỀ THI ĐA PHƯƠNG TIỆN</h2>
     <input type="text" id="subject" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid #ccc; border-radius:6px;" placeholder="Tên môn học...">
     <div style="margin-bottom:15px;">Thời gian: <input type="number" id="timeLimit" value="15" style="width:60px;"> phút</div>
     
     <div class="toolbar">
         <button id="btnImg">📷 Ảnh</button>
-        <button id="btnVideo">🎥 Video</button>
+        <button id="btnVideo">🎥 Video File</button>
         <button id="btnAudio">🎵 Audio</button>
-        <button id="btnYoutube" style="background: #ff0000;">▶ Youtube</button>
+        <button id="btnWebClip" style="background: #6f42c1;">🎬 Nhúng Clip (Youtube, FB, Web...)</button>
         <button id="btnPin" style="background:#6c757d;">📌 Ghim</button>
         <button onclick="insertAtSymbol()" style="background: #28a745; margin-left: auto;">➕ Chèn Block @</button>
         <input type="file" id="fileInput" style="display:none">
@@ -115,8 +96,8 @@
 
     <div id="editor" contenteditable="true">
 @
-Câu 1: Video này nói về nội dung gì?
-(Dán link Youtube vào đây)
+Câu 1: Video dưới đây nói về điều gì?
+(Dán link hoặc mã nhúng vào đây)
 A. Đáp án A
 B. Đáp án B
 Đáp án: A
@@ -138,31 +119,59 @@ B. Đáp án B
             <button id="btnCheck">Kiểm tra</button>
             <button id="btnSubmit">NỘP BÀI</button>
         </div>
-        
         <div class="timer-container">
             <div class="timer" id="timer">00:00</div>
         </div>
-        
         <div style="width: 100px;"></div> 
     </div>
 
     <div id="pinnedContainer">
-        <div style="font-size:12px; font-weight:bold; color:#856404;">📌 GHIM (Còn <span id="pinCountLeft">0</span> câu)</div>
+        <div style="font-size:12px; font-weight:bold; color:#856404;">📌 GHIM</div>
         <div id="pinnedContent" style="margin-top:5px;"></div>
     </div>
 
     <div id="resultBoard"></div>
-
     <div id="exam"></div>
 </div>
 
 <script>
-// --- BIẾN TOÀN CỤC ---
 let answers = {}, correctAnswers = {}, timeLeft, timerInterval;
 let currentPin = { content: "", remaining: 0 };
 let answeredQuestions = new Set();
 let currentUploadType = "";
 let isSubmitted = false;
+
+// --- XỬ LÝ CLIP TỪ WEB (YOUTUBE, FACEBOOK, VIMEO...) ---
+function handleWebClip() {
+    let input = prompt("Dán Link (Youtube, TikTok...) hoặc Mã Nhúng (<iframe>) vào đây:");
+    if (!input) return;
+
+    let embedUrl = "";
+    
+    // 1. Kiểm tra nếu là mã iframe hoàn chỉnh
+    if (input.includes("<iframe")) {
+        let srcMatch = input.match(/src=["']([^"']+)["']/);
+        if (srcMatch) embedUrl = srcMatch[1];
+    } 
+    // 2. Kiểm tra nếu là link YouTube
+    else if (input.includes("youtu")) {
+        let vidId = input.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([^#\?&]+)/);
+        if (vidId) embedUrl = `https://www.youtube.com/embed/${vidId[1]}`;
+    }
+    // 3. Các loại link khác (Facebook, Vimeo...)
+    else {
+        embedUrl = input; // Hy vọng link này hỗ trợ nhúng trực tiếp
+    }
+
+    if (embedUrl) {
+        let html = `<div class="clip-container" contenteditable="false">
+                        <iframe class="exam-iframe" src="${embedUrl}" allowfullscreen></iframe>
+                    </div><br>`;
+        insertHtmlAtCursor(html);
+    } else {
+        alert("Không nhận diện được link hoặc mã nhúng!");
+    }
+}
 
 function triggerUpload(type) {
     currentUploadType = type;
@@ -179,26 +188,12 @@ function handleFile(event) {
         let html = "";
         const data = e.target.result;
         if (currentUploadType === 'img') html = `<img src="${data}" class="media-item">`;
-        else if (currentUploadType === 'video') html = `<video controls src="${data}" class="media-item" style="max-width:200px;"></video>`;
+        else if (currentUploadType === 'video') html = `<video controls src="${data}" class="media-item"></video>`;
         else if (currentUploadType === 'audio') html = `<audio controls src="${data}" class="media-item"></audio>`;
         insertHtmlAtCursor(html + " <br>");
     };
     reader.readAsDataURL(file);
     event.target.value = ""; 
-}
-
-function handleYoutube() {
-    let url = prompt("Dán link Youtube vào đây:");
-    if (!url) return;
-    let match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([^#\?&]+)/);
-    
-    if (match && match[1]) {
-        let vidId = match[1];
-        let facade = `<div class="yt-facade" data-id="${vidId}" contenteditable="false" style="background-image: url('https://img.youtube.com/vi/${vidId}/hqdefault.jpg');"></div>`;
-        insertHtmlAtCursor(facade + "<br>");
-    } else {
-        alert("Link không hợp lệ!");
-    }
 }
 
 function insertHtmlAtCursor(html) {
@@ -233,11 +228,6 @@ function pinText() {
     } else alert("Bôi đen văn bản cần ghim!");
 }
 
-window.playYoutube = function(element) {
-    let vidId = element.getAttribute("data-id");
-    element.outerHTML = `<iframe class="exam-iframe" src="https://www.youtube.com/embed/${vidId}?autoplay=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
-};
-
 function processContentHtml(htmlString) {
     let tempDiv = document.createElement("div");
     tempDiv.innerHTML = htmlString;
@@ -249,7 +239,6 @@ function processContentHtml(htmlString) {
     return tempDiv.innerHTML;
 }
 
-// --- HÀM KIỂM TRA TIẾN ĐỘ ---
 function checkProgress() {
     if (isSubmitted) return;
     let total = Object.keys(correctAnswers).length;
@@ -263,7 +252,7 @@ function checkProgress() {
             questionDiv.classList.add("unanswered");
         }
     }
-    alert(`Bạn đã hoàn thành: ${done}/${total} câu. Các câu chưa làm được khoanh đỏ.`);
+    alert(`Bạn đã hoàn thành: ${done}/${total} câu.`);
 }
 
 function makeExam() {
@@ -280,7 +269,6 @@ function makeExam() {
     parts.forEach((part, index) => {
         if (part.trim().length === 0) return;
         let processedPart = processContentHtml(part);
-        processedPart = processedPart.replace(/class="yt-facade"/g, 'class="yt-facade" onclick="playYoutube(this)"');
 
         if (index % 2 === 0) { 
             if (processedPart.replace(/<br>/g, "").trim().length > 0) {
@@ -375,7 +363,6 @@ function startExam() {
     }, 1000);
 }
 
-// --- HÀM NỘP BÀI VÀ HIỆN KẾT QUẢ ---
 function finishExam() {
     if (isSubmitted) return;
     isSubmitted = true;
@@ -383,22 +370,17 @@ function finishExam() {
 
     let score = 0;
     let total = Object.keys(correctAnswers).length;
-    let answeredCount = Object.keys(answers).length;
-
     for (let i in correctAnswers) {
-        if (answers[i] === correctAnswers[i]) {
-            score++;
-        }
+        if (answers[i] === correctAnswers[i]) score++;
     }
 
     let percent = Math.round((score / total) * 100);
     let score10 = (score / total * 10).toFixed(2);
 
-    // Hiển thị bảng kết quả
     let resultHtml = `
         <h2>KẾT QUẢ BÀI THI</h2>
         <div class="stat-box">
-            <div class="stat-item"><span class="stat-value">${answeredCount}/${total}</span>Câu đã làm</div>
+            <div class="stat-item"><span class="stat-value">${Object.keys(answers).length}/${total}</span>Câu đã làm</div>
             <div class="stat-item"><span class="stat-value" style="color:#28a745">${score}</span>Câu đúng</div>
             <div class="stat-item"><span class="stat-value" style="color:#6610f2">${score10}</span>Điểm (10)</div>
             <div class="stat-item"><span class="stat-value" style="color:#fd7e14">${percent}%</span>Điểm (%)</div>
@@ -408,12 +390,7 @@ function finishExam() {
     const board = document.getElementById("resultBoard");
     board.innerHTML = resultHtml;
     board.style.display = "block";
-
-    // Khóa không cho làm tiếp
-    let inputs = document.querySelectorAll('input[type="radio"]');
-    inputs.forEach(input => input.disabled = true);
-
-    alert("Bạn đã nộp bài thành công!");
+    document.querySelectorAll('input[type="radio"]').forEach(input => input.disabled = true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -421,7 +398,7 @@ window.onload = () => {
     document.getElementById('btnImg').onclick = () => triggerUpload('img');
     document.getElementById('btnVideo').onclick = () => triggerUpload('video');
     document.getElementById('btnAudio').onclick = () => triggerUpload('audio');
-    document.getElementById('btnYoutube').onclick = handleYoutube;
+    document.getElementById('btnWebClip').onclick = handleWebClip;
     document.getElementById('fileInput').onchange = handleFile;
     document.getElementById('btnPin').onclick = pinText;
     document.getElementById('btnCreate').onclick = makeExam;
