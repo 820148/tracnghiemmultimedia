@@ -74,10 +74,6 @@
         .question b { display: block; margin-bottom: 15px; font-size: 18px; color: #0056b3; }
         .question.unanswered { border: 2px solid #ff0000; box-shadow: 0 0 10px rgba(255,0,0,0.2); }
         
-        /* Style cho kết quả đúng sai */
-        .ans-correct { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .ans-wrong { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        
         /* 3. BẢNG KẾT QUẢ */
         #resultBoard {
             display: none; background: #fff; padding: 20px; margin-bottom: 20px;
@@ -119,7 +115,7 @@
 
     <div id="editor" contenteditable="true">
 @
-Câu 1: Video này nói về gì?
+Câu 1: Video này nói về nội dung gì?
 (Dán link Youtube vào đây)
 A. Đáp án A
 B. Đáp án B
@@ -253,6 +249,7 @@ function processContentHtml(htmlString) {
     return tempDiv.innerHTML;
 }
 
+// --- HÀM KIỂM TRA TIẾN ĐỘ ---
 function checkProgress() {
     if (isSubmitted) return;
     let total = Object.keys(correctAnswers).length;
@@ -266,7 +263,7 @@ function checkProgress() {
             questionDiv.classList.add("unanswered");
         }
     }
-    alert(`Đã làm: ${done}/${total} câu. Các câu chưa làm được tô đỏ.`);
+    alert(`Bạn đã hoàn thành: ${done}/${total} câu. Các câu chưa làm được khoanh đỏ.`);
 }
 
 function makeExam() {
@@ -274,61 +271,64 @@ function makeExam() {
     if (!sub) return alert("Nhập tên môn!");
 
     const editor = document.getElementById("editor");
-    let rawHtml = editor.innerHTML
-        .replace(/<\/div>/gi, "\n</div>")
-        .replace(/<\/p>/gi, "\n</p>")
-        .replace(/<br\s*\/?>/gi, "\n<br>");
-
-    const parts = [...rawHtml.matchAll(/@([\s\S]*?)@/g)]; 
+    let rawHtml = editor.innerHTML;
+    const parts = rawHtml.split('@'); 
 
     let examHtml = "";
     let qIndex = 0;
 
-    if (parts.length === 0) return alert("Không tìm thấy câu hỏi trong dấu @!");
+    parts.forEach((part, index) => {
+        if (part.trim().length === 0) return;
+        let processedPart = processContentHtml(part);
+        processedPart = processedPart.replace(/class="yt-facade"/g, 'class="yt-facade" onclick="playYoutube(this)"');
 
-    parts.forEach(match => {
-        let content = match[1];
-        let ansMatch = content.match(/(?:Đáp\s*án|ĐÁP\s*ÁN|Kết\s*quả|Ans)[^\w]*[:\.\s]*([A-D])/i);
-        
-        if (!ansMatch) return;
-
-        let finalAns = ansMatch[1].toUpperCase();
-        let tempDiv = document.createElement("div");
-        tempDiv.innerHTML = processContentHtml(content); 
-        let fullHtml = tempDiv.innerHTML;
-        
-        let textContent = tempDiv.innerText.replace(/\u00a0/g, " "); 
-        let lines = textContent.split('\n').map(l => l.trim()).filter(l => l !== "");
-        let options = {};
-
-        lines.forEach(line => {
-            let optMatch = line.match(/^([A-D])[\.\)\:\-]\s*(.*)/i);
-            if (optMatch) {
-                let char = optMatch[1].toUpperCase();
-                options[char] = line;
-                fullHtml = fullHtml.split(line).join("");
+        if (index % 2 === 0) { 
+            if (processedPart.replace(/<br>/g, "").trim().length > 0) {
+                examHtml += `<div class="static-content">${processedPart}</div>`;
             }
-        });
-
-        let cleanHtml = fullHtml.replace(/(?:Đáp\s*án|ĐÁP\s*ÁN|Kết\s*quả|Ans)[^\w]*[:\.\s]*[A-D]/gi, "");
-
-        if (Object.keys(options).length >= 2) {
-            correctAnswers[qIndex] = finalAns;
-            examHtml += `<div class="question" id="q${qIndex}">
-                <b>Câu ${qIndex + 1}: ${cleanHtml}</b>`;
+        } else { 
+            let content = processedPart;
+            let ansMatch = content.match(/[^\w]*Đáp\s*án[^\w]*[:\.\s]*([A-D])/i);
             
-            ["A", "B", "C", "D"].forEach(k => {
-                if (options[k]) {
-                    // Thêm ID cho label để dễ tô màu sau này
-                    examHtml += `<label id="q${qIndex}_${k}"><input type="radio" name="q${qIndex}" value="${k}" onchange="recordAns(${qIndex}, '${k}')"> ${options[k]}</label>`;
+            if (!ansMatch) {
+                examHtml += `<div class="static-content">${content}</div>`;
+                return;
+            }
+
+            let finalAns = ansMatch[1].toUpperCase();
+            let tempDiv = document.createElement("div");
+            tempDiv.innerHTML = content;
+
+            let fullHtml = tempDiv.innerHTML;
+            let textLines = tempDiv.innerText.split('\n').map(l => l.trim()).filter(l => l !== "");
+            let options = {};
+
+            textLines.forEach(line => {
+                let optMatch = line.match(/^([A-D])\.\s*(.*)/i);
+                if (optMatch) {
+                    let char = optMatch[1].toUpperCase();
+                    options[char] = line;
+                    fullHtml = fullHtml.split(line).join("");
                 }
             });
-            examHtml += `</div>`;
-            qIndex++;
+
+            if(ansMatch[0]) fullHtml = fullHtml.split(ansMatch[0]).join("");
+
+            if (Object.keys(options).length >= 2) {
+                correctAnswers[qIndex] = finalAns;
+                examHtml += `<div class="question" id="q${qIndex}">
+                    <b>Câu ${qIndex + 1}: ${fullHtml}</b>`;
+                
+                ["A", "B", "C", "D"].forEach(k => {
+                    if (options[k]) {
+                        examHtml += `<label><input type="radio" name="q${qIndex}" value="${k}" onchange="recordAns(${qIndex}, '${k}')"> ${options[k]}</label>`;
+                    }
+                });
+                examHtml += `</div>`;
+                qIndex++;
+            }
         }
     });
-
-    if (qIndex === 0) return alert("Lỗi tách câu hỏi!");
 
     document.getElementById("exam").innerHTML = examHtml;
     document.getElementById("setup").style.display = "none";
@@ -339,7 +339,7 @@ function makeExam() {
 }
 
 function recordAns(qIdx, val) {
-    if (isSubmitted) return; // Không cho sửa khi đã nộp
+    if (isSubmitted) return;
     answers[qIdx] = val;
     let qDiv = document.getElementById(`q${qIdx}`);
     if (qDiv) qDiv.classList.remove("unanswered");
@@ -375,7 +375,7 @@ function startExam() {
     }, 1000);
 }
 
-// --- XỬ LÝ NỘP BÀI VÀ HIỂN THỊ KẾT QUẢ ---
+// --- HÀM NỘP BÀI VÀ HIỆN KẾT QUẢ ---
 function finishExam() {
     if (isSubmitted) return;
     isSubmitted = true;
@@ -383,34 +383,11 @@ function finishExam() {
 
     let score = 0;
     let total = Object.keys(correctAnswers).length;
-    let answered = 0;
+    let answeredCount = Object.keys(answers).length;
 
-    // Duyệt qua từng câu để chấm điểm và tô màu
-    for (let i = 0; i < total; i++) {
-        let userAns = answers[i];
-        let correctAns = correctAnswers[i];
-        let qDiv = document.getElementById(`q${i}`);
-        
-        // Vô hiệu hóa input
-        let radios = document.getElementsByName(`q${i}`);
-        radios.forEach(r => r.disabled = true);
-
-        if (userAns) {
-            answered++;
-            if (userAns === correctAns) {
-                score++;
-                // Tô xanh đáp án đúng mà người dùng chọn
-                document.getElementById(`q${i}_${userAns}`).classList.add("ans-correct");
-            } else {
-                // Tô đỏ đáp án sai người dùng chọn
-                document.getElementById(`q${i}_${userAns}`).classList.add("ans-wrong");
-                // Tô xanh đáp án đúng thực sự
-                document.getElementById(`q${i}_${correctAns}`).classList.add("ans-correct");
-            }
-        } else {
-            // Nếu không làm, chỉ hiện đáp án đúng
-            document.getElementById(`q${i}_${correctAns}`).classList.add("ans-correct");
-            qDiv.classList.add("unanswered");
+    for (let i in correctAnswers) {
+        if (answers[i] === correctAnswers[i]) {
+            score++;
         }
     }
 
@@ -421,11 +398,10 @@ function finishExam() {
     let resultHtml = `
         <h2>KẾT QUẢ BÀI THI</h2>
         <div class="stat-box">
-            <div class="stat-item"><span class="stat-value">${answered}/${total}</span>Câu đã làm</div>
+            <div class="stat-item"><span class="stat-value">${answeredCount}/${total}</span>Câu đã làm</div>
             <div class="stat-item"><span class="stat-value" style="color:#28a745">${score}</span>Câu đúng</div>
-            <div class="stat-item"><span class="stat-value" style="color:#dc3545">${total - score}</span>Câu sai/bỏ</div>
             <div class="stat-item"><span class="stat-value" style="color:#6610f2">${score10}</span>Điểm (10)</div>
-            <div class="stat-item"><span class="stat-value" style="color:#fd7e14">${percent}%</span>Đạt được</div>
+            <div class="stat-item"><span class="stat-value" style="color:#fd7e14">${percent}%</span>Điểm (%)</div>
         </div>
     `;
 
@@ -433,11 +409,11 @@ function finishExam() {
     board.innerHTML = resultHtml;
     board.style.display = "block";
 
-    // Ẩn nút nộp bài, chỉ hiện nút xem lại (hoặc reload)
-    document.getElementById("btnSubmit").style.display = "none";
-    document.getElementById("btnCheck").style.display = "none";
-    
-    // Cuộn lên đầu trang để xem kết quả
+    // Khóa không cho làm tiếp
+    let inputs = document.querySelectorAll('input[type="radio"]');
+    inputs.forEach(input => input.disabled = true);
+
+    alert("Bạn đã nộp bài thành công!");
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
