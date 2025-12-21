@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tạo Đề Thi (Youtube Click-to-Play)</title>
+    <title>Tạo Đề Thi (Giao diện chuẩn v17)</title>
 
     <script>
         window.MathJax = {
@@ -17,6 +17,9 @@
         html, body { margin:0; font-family: 'Segoe UI', Arial, sans-serif; background:#f0f2f5; color: #333; }
         #setup, #preExam, #examPage { max-width:900px; margin:auto; padding:20px; box-sizing: border-box; }
         
+        /* 1. KHẮC PHỤC LỖI CHE KHUẤT: Thêm padding-top cho trang thi */
+        #examPage { padding-top: 80px; }
+
         #editor { 
             width: 100%; min-height: 450px; border: 2px solid #007bff; 
             background: #fff; padding: 15px; border-radius: 8px; outline: none;
@@ -27,58 +30,88 @@
         img.media-item { max-width: 150px; border: 1px solid #ccc; margin: 5px; vertical-align: middle; }
         video, audio { max-width: 300px; vertical-align: middle; margin: 5px; }
 
-        /* YOUTUBE FACADE (GIAO DIỆN GIẢ LẬP) */
+        /* YOUTUBE FACADE */
         .yt-facade {
-            display: inline-block;
-            width: 300px; height: 170px;
-            background-color: #000;
-            background-position: center;
-            background-size: cover;
-            position: relative;
-            cursor: pointer;
-            border-radius: 8px;
-            margin: 10px 0;
-            border: 2px solid #444;
+            display: inline-block; width: 300px; height: 170px;
+            background-color: #000; background-position: center; background-size: cover;
+            position: relative; cursor: pointer; border-radius: 8px;
+            margin: 10px 0; border: 2px solid #444;
         }
-        /* Nút Play ở giữa */
         .yt-facade::after {
-            content: "▶";
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 50px; color: white;
-            opacity: 0.8; text-shadow: 0 0 10px rgba(0,0,0,0.5);
-            transition: 0.2s;
+            content: "▶"; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); font-size: 50px; color: white;
+            opacity: 0.8; text-shadow: 0 0 10px rgba(0,0,0,0.5); transition: 0.2s;
         }
         .yt-facade:hover::after { color: #ff0000; opacity: 1; }
-
         .exam-iframe { width: 100%; max-width: 600px; height: 350px; border: none; }
 
         #preExam, #examPage { display:none; }
-        .top-bar { position: fixed; top: 0; left: 0; width: 100%; background: #fff; z-index: 2000; padding: 10px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
-        #pinnedContainer { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); width: 95%; max-width: 800px; background: #fffde7; border: 2px solid #fbc02d; padding: 15px; z-index: 1500; border-radius: 0 0 10px 10px; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .timer { background: #d00000; color: #fff; padding: 8px 15px; font-size: 24px; font-weight: bold; border-radius: 6px; }
+        
+        /* 2. CĂN GIỮA ĐỒNG HỒ: Sử dụng Flexbox và Absolute */
+        .top-bar { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 60px;
+            background: #fff; z-index: 2000; padding: 0 20px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            display: flex; justify-content: space-between; align-items: center; 
+            box-sizing: border-box; 
+        }
+        
+        .timer-container {
+            position: absolute; left: 50%; transform: translateX(-50%);
+            text-align: center;
+        }
+        .timer { 
+            background: #d00000; color: #fff; padding: 5px 15px; 
+            font-size: 20px; font-weight: bold; border-radius: 20px; 
+            min-width: 80px; display: inline-block;
+        }
+        
+        #pinnedContainer { position: fixed; top: 65px; left: 50%; transform: translateX(-50%); width: 95%; max-width: 800px; background: #fffde7; border: 2px solid #fbc02d; padding: 10px; z-index: 1500; border-radius: 0 0 10px 10px; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.1); max-height: 150px; overflow-y: auto; }
+        
         .static-content { margin-bottom: 20px; padding: 15px; background: #e9ecef; border-radius: 8px; border-left: 5px solid #17a2b8; }
-        .question { margin-bottom: 25px; padding: 25px; border-radius: 12px; background: #fff; border: 1px solid #ddd; }
+        
+        .question { margin-bottom: 25px; padding: 25px; border-radius: 12px; background: #fff; border: 1px solid #ddd; transition: 0.3s; }
         .question b { display: block; margin-bottom: 15px; font-size: 18px; color: #0056b3; }
+        .question.unanswered { border: 2px solid #ff0000; box-shadow: 0 0 10px rgba(255,0,0,0.2); }
+        
+        /* Style cho kết quả đúng sai */
+        .ans-correct { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .ans-wrong { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        
+        /* 3. BẢNG KẾT QUẢ */
+        #resultBoard {
+            display: none; background: #fff; padding: 20px; margin-bottom: 20px;
+            border-radius: 10px; border: 3px solid #28a745; text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        #resultBoard h2 { color: #28a745; margin-top: 0; }
+        .stat-box { display: flex; justify-content: space-around; margin-top: 15px; flex-wrap: wrap; }
+        .stat-item { background: #f8f9fa; padding: 10px 20px; border-radius: 8px; border: 1px solid #ddd; min-width: 100px; margin: 5px; }
+        .stat-value { font-size: 24px; font-weight: bold; color: #007bff; display: block; }
+
         .exam-media { display: block; margin: 15px auto; max-width: 100%; height: auto; border-radius: 8px; }
         label { display: block; margin: 10px 0; cursor: pointer; padding: 12px; border: 1px solid #eee; border-radius: 8px; transition: 0.2s; }
         label:hover { background: #f8f9fa; }
+        
         .toolbar { margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; background: #e9ecef; padding: 10px; border-radius: 8px; }
         button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 6px; background: #007bff; color: white; font-weight: bold; }
+        button:hover { opacity: 0.9; }
+        #btnCheck { background: #17a2b8; color: white; margin-right: 10px; }
+        #btnSubmit { background: #dc3545; color: white; }
     </style>
 </head>
 <body>
 
 <div id="setup">
-    <h2 style="color:#007bff; text-align: center;">TẠO ĐỀ THI (AN TOÀN TUYỆT ĐỐI)</h2>
+    <h2 style="color:#007bff; text-align: center;">TẠO ĐỀ THI (V17 - FULL TÍNH NĂNG)</h2>
     <input type="text" id="subject" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid #ccc; border-radius:6px;" placeholder="Tên môn học...">
     <div style="margin-bottom:15px;">Thời gian: <input type="number" id="timeLimit" value="15" style="width:60px;"> phút</div>
     
     <div class="toolbar">
         <button id="btnImg">📷 Ảnh</button>
-        <button id="btnVideo">🎥 Video (File)</button>
-        <button id="btnAudio">🎵 Audio (File)</button>
-        <button id="btnYoutube" style="background: #ff0000;">▶ Youtube Link</button>
+        <button id="btnVideo">🎥 Video</button>
+        <button id="btnAudio">🎵 Audio</button>
+        <button id="btnYoutube" style="background: #ff0000;">▶ Youtube</button>
         <button id="btnPin" style="background:#6c757d;">📌 Ghim</button>
         <button onclick="insertAtSymbol()" style="background: #28a745; margin-left: auto;">➕ Chèn Block @</button>
         <input type="file" id="fileInput" style="display:none">
@@ -86,10 +119,10 @@
 
     <div id="editor" contenteditable="true">
 @
-Câu 1: Video dưới đây nói về chủ đề gì?
+Câu 1: Video này nói về gì?
 (Dán link Youtube vào đây)
-A. Chủ đề A
-B. Chủ đề B
+A. Đáp án A
+B. Đáp án B
 Đáp án: A
 @
     </div>
@@ -105,23 +138,36 @@ B. Chủ đề B
 
 <div id="examPage">
     <div class="top-bar">
-        <button id="btnSubmit" style="background:#dc3545;">NỘP BÀI</button>
-        <div class="timer" id="timer">00:00</div>
+        <div>
+            <button id="btnCheck">Kiểm tra</button>
+            <button id="btnSubmit">NỘP BÀI</button>
+        </div>
+        
+        <div class="timer-container">
+            <div class="timer" id="timer">00:00</div>
+        </div>
+        
+        <div style="width: 100px;"></div> 
     </div>
+
     <div id="pinnedContainer">
         <div style="font-size:12px; font-weight:bold; color:#856404;">📌 GHIM (Còn <span id="pinCountLeft">0</span> câu)</div>
-        <div id="pinnedContent" style="margin-top:10px; max-height:200px; overflow-y:auto;"></div>
+        <div id="pinnedContent" style="margin-top:5px;"></div>
     </div>
+
+    <div id="resultBoard"></div>
+
     <div id="exam"></div>
 </div>
 
 <script>
+// --- BIẾN TOÀN CỤC ---
 let answers = {}, correctAnswers = {}, timeLeft, timerInterval;
 let currentPin = { content: "", remaining: 0 };
 let answeredQuestions = new Set();
 let currentUploadType = "";
+let isSubmitted = false;
 
-// --- XỬ LÝ FILE (ẢNH/VIDEO/AUDIO) ---
 function triggerUpload(type) {
     currentUploadType = type;
     const input = document.getElementById('fileInput');
@@ -145,18 +191,13 @@ function handleFile(event) {
     event.target.value = ""; 
 }
 
-// --- XỬ LÝ YOUTUBE (CHỈ LẤY LINK, KHÔNG TẠO IFRAME NGAY) ---
 function handleYoutube() {
-    let url = prompt("Dán link Youtube vào đây (Link thường hoặc Shorts):");
+    let url = prompt("Dán link Youtube vào đây:");
     if (!url) return;
-
-    // Regex bắt ID
     let match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([^#\?&]+)/);
     
     if (match && match[1]) {
         let vidId = match[1];
-        // Tạo giao diện GIẢ (Facade) gồm ảnh bìa + nút play
-        // Lưu trữ ID vào data-id để khi thi mới xử lý
         let facade = `<div class="yt-facade" data-id="${vidId}" contenteditable="false" style="background-image: url('https://img.youtube.com/vi/${vidId}/hqdefault.jpg');"></div>`;
         insertHtmlAtCursor(facade + "<br>");
     } else {
@@ -196,97 +237,98 @@ function pinText() {
     } else alert("Bôi đen văn bản cần ghim!");
 }
 
-// --- XỬ LÝ HTML KHI TẠO ĐỀ ---
+window.playYoutube = function(element) {
+    let vidId = element.getAttribute("data-id");
+    element.outerHTML = `<iframe class="exam-iframe" src="https://www.youtube.com/embed/${vidId}?autoplay=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+};
+
 function processContentHtml(htmlString) {
     let tempDiv = document.createElement("div");
     tempDiv.innerHTML = htmlString;
-
-    // Chuẩn hóa Media
     let medias = tempDiv.querySelectorAll("img:not(.media-item), video, audio");
     medias.forEach(m => {
         m.classList.add("exam-media");
         m.removeAttribute("style");
     });
-
     return tempDiv.innerHTML;
 }
 
-// --- HÀM CLICK ĐỂ PHÁT VIDEO (QUAN TRỌNG) ---
-// Hàm này được gọi khi người dùng bấm vào ảnh bìa video
-window.playYoutube = function(element) {
-    let vidId = element.getAttribute("data-id");
-    // Thay thế ảnh bìa bằng Iframe thật
-    element.outerHTML = `<iframe class="exam-iframe" src="https://www.youtube.com/embed/${vidId}?autoplay=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
-};
+function checkProgress() {
+    if (isSubmitted) return;
+    let total = Object.keys(correctAnswers).length;
+    let done = 0;
+    for (let i = 0; i < total; i++) {
+        let questionDiv = document.getElementById(`q${i}`);
+        if (answers[i]) {
+            done++;
+            questionDiv.classList.remove("unanswered");
+        } else {
+            questionDiv.classList.add("unanswered");
+        }
+    }
+    alert(`Đã làm: ${done}/${total} câu. Các câu chưa làm được tô đỏ.`);
+}
 
-// --- TẠO ĐỀ ---
 function makeExam() {
     const sub = document.getElementById("subject").value.trim();
     if (!sub) return alert("Nhập tên môn!");
 
     const editor = document.getElementById("editor");
-    let rawHtml = editor.innerHTML;
-    const parts = rawHtml.split('@'); 
+    let rawHtml = editor.innerHTML
+        .replace(/<\/div>/gi, "\n</div>")
+        .replace(/<\/p>/gi, "\n</p>")
+        .replace(/<br\s*\/?>/gi, "\n<br>");
+
+    const parts = [...rawHtml.matchAll(/@([\s\S]*?)@/g)]; 
 
     let examHtml = "";
     let qIndex = 0;
 
-    parts.forEach((part, index) => {
-        if (part.trim().length === 0) return;
+    if (parts.length === 0) return alert("Không tìm thấy câu hỏi trong dấu @!");
 
-        // Xử lý chung cho Youtube Facade: Thêm sự kiện onclick
-        // Lưu ý: Ta xử lý chuỗi trực tiếp để gán hàm onclick
-        let processedPart = processContentHtml(part);
-        processedPart = processedPart.replace(/class="yt-facade"/g, 'class="yt-facade" onclick="playYoutube(this)"');
+    parts.forEach(match => {
+        let content = match[1];
+        let ansMatch = content.match(/(?:Đáp\s*án|ĐÁP\s*ÁN|Kết\s*quả|Ans)[^\w]*[:\.\s]*([A-D])/i);
+        
+        if (!ansMatch) return;
 
-        if (index % 2 === 0) { // Ngoài block
-            if (processedPart.replace(/<br>/g, "").trim().length > 0) {
-                examHtml += `<div class="static-content">${processedPart}</div>`;
+        let finalAns = ansMatch[1].toUpperCase();
+        let tempDiv = document.createElement("div");
+        tempDiv.innerHTML = processContentHtml(content); 
+        let fullHtml = tempDiv.innerHTML;
+        
+        let textContent = tempDiv.innerText.replace(/\u00a0/g, " "); 
+        let lines = textContent.split('\n').map(l => l.trim()).filter(l => l !== "");
+        let options = {};
+
+        lines.forEach(line => {
+            let optMatch = line.match(/^([A-D])[\.\)\:\-]\s*(.*)/i);
+            if (optMatch) {
+                let char = optMatch[1].toUpperCase();
+                options[char] = line;
+                fullHtml = fullHtml.split(line).join("");
             }
-        } else { // Trong block
-            let content = processedPart;
-            let ansMatch = content.match(/[^\w]*Đáp\s*án[^\w]*[:\.\s]*([A-D])/i);
+        });
+
+        let cleanHtml = fullHtml.replace(/(?:Đáp\s*án|ĐÁP\s*ÁN|Kết\s*quả|Ans)[^\w]*[:\.\s]*[A-D]/gi, "");
+
+        if (Object.keys(options).length >= 2) {
+            correctAnswers[qIndex] = finalAns;
+            examHtml += `<div class="question" id="q${qIndex}">
+                <b>Câu ${qIndex + 1}: ${cleanHtml}</b>`;
             
-            if (!ansMatch) {
-                examHtml += `<div class="static-content">${content}</div>`;
-                return;
-            }
-
-            let finalAns = ansMatch[1].toUpperCase();
-            let tempDiv = document.createElement("div");
-            tempDiv.innerHTML = content;
-
-            let fullHtml = tempDiv.innerHTML;
-            let textLines = tempDiv.innerText.split('\n').map(l => l.trim()).filter(l => l !== "");
-            let options = {};
-
-            textLines.forEach(line => {
-                let optMatch = line.match(/^([A-D])\.\s*(.*)/i);
-                if (optMatch) {
-                    let char = optMatch[1].toUpperCase();
-                    options[char] = line;
-                    fullHtml = fullHtml.split(line).join("");
+            ["A", "B", "C", "D"].forEach(k => {
+                if (options[k]) {
+                    // Thêm ID cho label để dễ tô màu sau này
+                    examHtml += `<label id="q${qIndex}_${k}"><input type="radio" name="q${qIndex}" value="${k}" onchange="recordAns(${qIndex}, '${k}')"> ${options[k]}</label>`;
                 }
             });
-
-            if(ansMatch[0]) fullHtml = fullHtml.split(ansMatch[0]).join("");
-
-            if (Object.keys(options).length >= 2) {
-                correctAnswers[qIndex] = finalAns;
-                examHtml += `<div class="question" id="q${qIndex}">
-                    <b>Câu ${qIndex + 1}: ${fullHtml}</b>`;
-                ["A", "B", "C", "D"].forEach(k => {
-                    if (options[k]) {
-                        examHtml += `<label><input type="radio" name="q${qIndex}" value="${k}" onchange="recordAns(${qIndex}, '${k}')"> ${options[k]}</label>`;
-                    }
-                });
-                examHtml += `</div>`;
-                qIndex++;
-            }
+            examHtml += `</div>`;
+            qIndex++;
         }
     });
 
-    if (qIndex === 0 && examHtml === "") return alert("Không tìm thấy nội dung!");
+    if (qIndex === 0) return alert("Lỗi tách câu hỏi!");
 
     document.getElementById("exam").innerHTML = examHtml;
     document.getElementById("setup").style.display = "none";
@@ -297,7 +339,11 @@ function makeExam() {
 }
 
 function recordAns(qIdx, val) {
+    if (isSubmitted) return; // Không cho sửa khi đã nộp
     answers[qIdx] = val;
+    let qDiv = document.getElementById(`q${qIdx}`);
+    if (qDiv) qDiv.classList.remove("unanswered");
+
     if (!answeredQuestions.has(qIdx)) {
         answeredQuestions.add(qIdx);
         if (currentPin.remaining > 0) {
@@ -312,7 +358,6 @@ function showPin() {
     if (currentPin.remaining > 0) {
         box.style.display = "block";
         document.getElementById("pinnedContent").innerHTML = currentPin.content;
-        document.getElementById("pinCountLeft").innerText = currentPin.remaining;
         MathJax.typeset();
     } else box.style.display = "none";
 }
@@ -330,12 +375,70 @@ function startExam() {
     }, 1000);
 }
 
+// --- XỬ LÝ NỘP BÀI VÀ HIỂN THỊ KẾT QUẢ ---
 function finishExam() {
+    if (isSubmitted) return;
+    isSubmitted = true;
     clearInterval(timerInterval);
-    let score = 0, total = Object.keys(correctAnswers).length;
-    for (let i in correctAnswers) if (answers[i] === correctAnswers[i]) score++;
-    alert("Kết quả: " + score + "/" + total);
-    location.reload();
+
+    let score = 0;
+    let total = Object.keys(correctAnswers).length;
+    let answered = 0;
+
+    // Duyệt qua từng câu để chấm điểm và tô màu
+    for (let i = 0; i < total; i++) {
+        let userAns = answers[i];
+        let correctAns = correctAnswers[i];
+        let qDiv = document.getElementById(`q${i}`);
+        
+        // Vô hiệu hóa input
+        let radios = document.getElementsByName(`q${i}`);
+        radios.forEach(r => r.disabled = true);
+
+        if (userAns) {
+            answered++;
+            if (userAns === correctAns) {
+                score++;
+                // Tô xanh đáp án đúng mà người dùng chọn
+                document.getElementById(`q${i}_${userAns}`).classList.add("ans-correct");
+            } else {
+                // Tô đỏ đáp án sai người dùng chọn
+                document.getElementById(`q${i}_${userAns}`).classList.add("ans-wrong");
+                // Tô xanh đáp án đúng thực sự
+                document.getElementById(`q${i}_${correctAns}`).classList.add("ans-correct");
+            }
+        } else {
+            // Nếu không làm, chỉ hiện đáp án đúng
+            document.getElementById(`q${i}_${correctAns}`).classList.add("ans-correct");
+            qDiv.classList.add("unanswered");
+        }
+    }
+
+    let percent = Math.round((score / total) * 100);
+    let score10 = (score / total * 10).toFixed(2);
+
+    // Hiển thị bảng kết quả
+    let resultHtml = `
+        <h2>KẾT QUẢ BÀI THI</h2>
+        <div class="stat-box">
+            <div class="stat-item"><span class="stat-value">${answered}/${total}</span>Câu đã làm</div>
+            <div class="stat-item"><span class="stat-value" style="color:#28a745">${score}</span>Câu đúng</div>
+            <div class="stat-item"><span class="stat-value" style="color:#dc3545">${total - score}</span>Câu sai/bỏ</div>
+            <div class="stat-item"><span class="stat-value" style="color:#6610f2">${score10}</span>Điểm (10)</div>
+            <div class="stat-item"><span class="stat-value" style="color:#fd7e14">${percent}%</span>Đạt được</div>
+        </div>
+    `;
+
+    const board = document.getElementById("resultBoard");
+    board.innerHTML = resultHtml;
+    board.style.display = "block";
+
+    // Ẩn nút nộp bài, chỉ hiện nút xem lại (hoặc reload)
+    document.getElementById("btnSubmit").style.display = "none";
+    document.getElementById("btnCheck").style.display = "none";
+    
+    // Cuộn lên đầu trang để xem kết quả
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 window.onload = () => {
@@ -348,6 +451,7 @@ window.onload = () => {
     document.getElementById('btnCreate').onclick = makeExam;
     document.getElementById('btnStart').onclick = startExam;
     document.getElementById('btnSubmit').onclick = finishExam;
+    document.getElementById('btnCheck').onclick = checkProgress;
 };
 </script>
 </body>
