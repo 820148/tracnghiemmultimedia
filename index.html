@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tạo Đề Thi (Đa phương tiện v18)</title>
+    <title>Tạo Đề Thi (Đa phương tiện v19 - Fix)</title>
 
     <script>
         window.MathJax = {
@@ -18,10 +18,14 @@
         #setup, #preExam, #examPage { max-width:900px; margin:auto; padding:20px; box-sizing: border-box; }
         #examPage { padding-top: 80px; }
 
+        /* SỬA 1: Fix cứng chiều cao khung soạn thảo */
         #editor { 
-            width: 100%; min-height: 450px; border: 2px solid #007bff; 
+            width: 100%; height: 450px; /* Đổi min-height thành height cố định */
+            border: 2px solid #007bff; 
             background: #fff; padding: 15px; border-radius: 8px; outline: none;
-            overflow-y: auto; font-size: 16px; line-height: 1.6;
+            overflow-y: auto; /* Hiện thanh cuộn khi nội dung dài */
+            font-size: 16px; line-height: 1.6;
+            box-sizing: border-box;
         }
 
         /* MEDIA STYLES */
@@ -67,9 +71,15 @@
         .stat-value { font-size: 24px; font-weight: bold; color: #007bff; display: block; }
 
         .exam-media { display: block; margin: 15px auto; max-width: 100%; height: auto; border-radius: 8px; }
-        label { display: block; margin: 10px 0; cursor: pointer; padding: 12px; border: 1px solid #eee; border-radius: 8px; transition: 0.2s; }
-        label:hover { background: #f8f9fa; }
         
+        /* CSS CHO LABEL CÂU HỎI */
+        .option-label { display: block; margin: 10px 0; cursor: pointer; padding: 12px; border: 1px solid #eee; border-radius: 8px; transition: 0.2s; }
+        .option-label:hover { background: #f8f9fa; }
+        
+        /* SỬA 2: Thêm CSS để tô màu khi đúng sai */
+        .correct-ans { background-color: #d4edda !important; border: 1px solid #c3e6cb !important; color: #155724; }
+        .wrong-ans { background-color: #f8d7da !important; border: 1px solid #f5c6cb !important; color: #721c24; }
+
         .toolbar { margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; background: #e9ecef; padding: 10px; border-radius: 8px; }
         button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 6px; background: #007bff; color: white; font-weight: bold; }
         button:hover { opacity: 0.9; }
@@ -141,26 +151,21 @@ let answeredQuestions = new Set();
 let currentUploadType = "";
 let isSubmitted = false;
 
-// --- XỬ LÝ CLIP TỪ WEB (YOUTUBE, FACEBOOK, VIMEO...) ---
 function handleWebClip() {
     let input = prompt("Dán Link (Youtube, TikTok...) hoặc Mã Nhúng (<iframe>) vào đây:");
     if (!input) return;
 
     let embedUrl = "";
-    
-    // 1. Kiểm tra nếu là mã iframe hoàn chỉnh
     if (input.includes("<iframe")) {
         let srcMatch = input.match(/src=["']([^"']+)["']/);
         if (srcMatch) embedUrl = srcMatch[1];
     } 
-    // 2. Kiểm tra nếu là link YouTube
     else if (input.includes("youtu")) {
         let vidId = input.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([^#\?&]+)/);
         if (vidId) embedUrl = `https://www.youtube.com/embed/${vidId[1]}`;
     }
-    // 3. Các loại link khác (Facebook, Vimeo...)
     else {
-        embedUrl = input; // Hy vọng link này hỗ trợ nhúng trực tiếp
+        embedUrl = input; 
     }
 
     if (embedUrl) {
@@ -254,84 +259,17 @@ function checkProgress() {
     }
     alert(`Bạn đã hoàn thành: ${done}/${total} câu.`);
 }
-
-function makeExam() {
-    const sub = document.getElementById("subject").value.trim();
-    if (!sub) return alert("Nhập tên môn!");
-
-    const editor = document.getElementById("editor");
-    let rawHtml = editor.innerHTML;
-    const parts = rawHtml.split('@'); 
-
-    let examHtml = "";
-    let qIndex = 0;
-
-    parts.forEach((part, index) => {
-        if (part.trim().length === 0) return;
-        let processedPart = processContentHtml(part);
-
-        if (index % 2 === 0) { 
-            if (processedPart.replace(/<br>/g, "").trim().length > 0) {
-                examHtml += `<div class="static-content">${processedPart}</div>`;
-            }
-        } else { 
-            let content = processedPart;
-            let ansMatch = content.match(/[^\w]*Đáp\s*án[^\w]*[:\.\s]*([A-D])/i);
-            
-            if (!ansMatch) {
-                examHtml += `<div class="static-content">${content}</div>`;
-                return;
-            }
-
-            let finalAns = ansMatch[1].toUpperCase();
-            let tempDiv = document.createElement("div");
-            tempDiv.innerHTML = content;
-
-            let fullHtml = tempDiv.innerHTML;
-            let textLines = tempDiv.innerText.split('\n').map(l => l.trim()).filter(l => l !== "");
-            let options = {};
-
-            textLines.forEach(line => {
-                let optMatch = line.match(/^([A-D])\.\s*(.*)/i);
-                if (optMatch) {
-                    let char = optMatch[1].toUpperCase();
-                    options[char] = line;
-                    fullHtml = fullHtml.split(line).join("");
-                }
-            });
-
-            if(ansMatch[0]) fullHtml = fullHtml.split(ansMatch[0]).join("");
-
-            if (Object.keys(options).length >= 2) {
-                correctAnswers[qIndex] = finalAns;
-                examHtml += `<div class="question" id="q${qIndex}">
-                    <b>Câu ${qIndex + 1}: ${fullHtml}</b>`;
-                
-                ["A", "B", "C", "D"].forEach(k => {
-                    if (options[k]) {
-                        examHtml += `<label><input type="radio" name="q${qIndex}" value="${k}" onchange="recordAns(${qIndex}, '${k}')"> ${options[k]}</label>`;
-                    }
-                });
-                examHtml += `</div>`;
-                qIndex++;
-            }
-        }
-    });
-
-    document.getElementById("exam").innerHTML = examHtml;
-    document.getElementById("setup").style.display = "none";
-    document.getElementById("preExam").style.display = "block";
-    document.getElementById("preSubject").innerText = sub;
-    document.getElementById("preTime").innerText = "Thời gian: " + document.getElementById("timeLimit").value + " phút";
-    MathJax.typeset();
-}
-
 function recordAns(qIdx, val) {
-    if (isSubmitted) return;
-    answers[qIdx] = val;
+    if (isSubmitted) return; // Nếu đã nộp bài thì không ghi nhận nữa
+    
+    answers[qIdx] = val; // Lưu đáp án học sinh chọn vào biến answers
+    
     let qDiv = document.getElementById(`q${qIdx}`);
-    if (qDiv) qDiv.classList.remove("unanswered");
+    if (qDiv) {
+        qDiv.classList.remove("unanswered"); // Xóa cảnh báo chưa trả lời
+    }
 
+    // Xử lý logic ghim (nếu có)
     if (!answeredQuestions.has(qIdx)) {
         answeredQuestions.add(qIdx);
         if (currentPin.remaining > 0) {
@@ -340,7 +278,109 @@ function recordAns(qIdx, val) {
         }
     }
 }
+function makeExam() {
+    const sub = document.getElementById("subject").value.trim();
+    if (!sub) return alert("Nhập tên môn!");
 
+    const editor = document.getElementById("editor");
+    let fullContent = editor.innerHTML;
+    
+    let examHtml = "";
+    let qIndex = 0;
+    
+    const regexBlock = /@([\s\S]*?)@/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = regexBlock.exec(fullContent)) !== null) {
+        // Xử lý nội dung tĩnh ngoài dấu @
+        let staticPart = fullContent.substring(lastIndex, match.index).trim();
+        if (staticPart.replace(/<br\s*\/?>/gi, "").trim().length > 0) {
+            examHtml += `<div class="static-content">${processContentHtml(staticPart)}</div>`;
+        }
+
+        let blockContent = match[1];
+
+        // 1. Tìm đáp án đúng trước
+        let ansRegex = /Đáp\s*án(?:\s*đúng)?\s*[:\-]\s*([A-D])/i;
+        let ansMatch = blockContent.match(ansRegex);
+        
+        if (ansMatch) {
+            let finalAns = ansMatch[1].toUpperCase();
+            let textBeforeAns = blockContent.split(ansRegex)[0];
+
+            // 2. Thuật toán tách câu hỏi và các lựa chọn
+            // Chúng ta tìm các mốc A. B. C. D. dựa trên ranh giới thẻ HTML hoặc dòng mới
+            let parts = textBeforeAns.split(/(?:<br\s*\/?>|\n|<div>|&nbsp;|\s|^)([A-D][\.\)\-]\s*)/i);
+            
+            // Loại bỏ các phần tử rỗng do split tạo ra
+            parts = parts.map(p => p.trim()).filter(p => p.length > 0);
+
+            if (parts.length >= 3) {
+                let questionTitle = parts[0]; 
+                let options = {};
+
+                // Duyệt qua mảng parts để nhặt các cặp [Mốc, Nội dung]
+                // Vì parts[0] là câu hỏi, nên bắt đầu từ i = 1
+                for (let i = 1; i < parts.length; i++) {
+                    let item = parts[i];
+                    // Kiểm tra xem item có phải là mốc A. B. C. D. không
+                    if (/^[A-D][\.\)\-]$/i.test(item)) {
+                        let char = item.charAt(0).toUpperCase();
+                        let content = parts[i+1] || "";
+                        options[char] = item + " " + content;
+                        i++; // Nhảy qua phần nội dung đã lấy
+                    }
+                }
+
+                if (options["A"] && options["B"]) {
+                    correctAnswers[qIndex] = finalAns;
+                    examHtml += `<div class="question" id="q${qIndex}">
+                                    <b>Câu ${qIndex + 1}: ${questionTitle}</b>`;
+                    
+                    ["A", "B", "C", "D"].forEach(k => {
+                        if (options[k]) {
+                            examHtml += `<label class="option-label">
+                                            <input type="radio" name="q${qIndex}" value="${k}" onchange="recordAns(${qIndex}, '${k}')"> 
+                                            ${options[k]}
+                                         </label>`;
+                        }
+                    });
+                    
+                    examHtml += `<div class="ans-guide" id="guide${qIndex}" style="display:none; color:green; font-weight:bold; margin-top:10px;">Đáp án đúng: ${finalAns}</div>`;
+                    examHtml += `</div>`;
+                    qIndex++;
+                } else {
+                    examHtml += `<div class="static-content">${match[1]}</div>`;
+                }
+            } else {
+                examHtml += `<div class="static-content">${match[1]}</div>`;
+            }
+        } else {
+            examHtml += `<div class="static-content">${match[1]}</div>`;
+        }
+        
+        lastIndex = regexBlock.lastIndex;
+    }
+
+    let remainingPart = fullContent.substring(lastIndex).trim();
+    if (remainingPart.replace(/<br\s*\/?>/gi, "").trim().length > 0) {
+        examHtml += `<div class="static-content">${processContentHtml(remainingPart)}</div>`;
+    }
+
+    if (qIndex === 0) return alert("Hệ thống vẫn chưa nhận diện được cấu trúc. Hãy đảm bảo bạn có dấu chấm sau chữ cái (A. ) và dòng Đáp án đúng: B");
+
+    document.getElementById("exam").innerHTML = examHtml;
+    document.getElementById("setup").style.display = "none";
+    document.getElementById("preExam").style.display = "block";
+    document.getElementById("preSubject").innerText = sub;
+    document.getElementById("preTime").innerText = "Thời gian: " + document.getElementById("timeLimit").value + " phút";
+    
+    // Kích hoạt MathJax để vẽ công thức toán
+    if (window.MathJax && window.MathJax.typeset) {
+        window.MathJax.typeset();
+    }
+}
 function showPin() {
     const box = document.getElementById("pinnedContainer");
     if (currentPin.remaining > 0) {
@@ -370,8 +410,31 @@ function finishExam() {
 
     let score = 0;
     let total = Object.keys(correctAnswers).length;
+
+    // SỬA 4: Vòng lặp tô màu đáp án
     for (let i in correctAnswers) {
-        if (answers[i] === correctAnswers[i]) score++;
+        let qDiv = document.getElementById(`q${i}`);
+        let inputs = qDiv.querySelectorAll('input[type="radio"]');
+        let correctVal = correctAnswers[i];
+        let userVal = answers[i];
+
+        // So khớp đáp án để cộng điểm
+        if (userVal === correctVal) score++;
+
+        // Tô màu
+        inputs.forEach(input => {
+            let parentLabel = input.parentElement; // Lấy thẻ <label> bao quanh
+            
+            // Tô xanh đáp án ĐÚNG (luôn hiện, dù người dùng chọn gì)
+            if (input.value === correctVal) {
+                parentLabel.classList.add('correct-ans');
+            }
+
+            // Tô đỏ nếu người dùng chọn SAI
+            if (input.checked && input.value !== correctVal) {
+                parentLabel.classList.add('wrong-ans');
+            }
+        });
     }
 
     let percent = Math.round((score / total) * 100);
